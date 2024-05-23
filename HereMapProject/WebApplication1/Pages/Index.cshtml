@@ -1,0 +1,255 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+
+<html>
+
+<head>
+    <title>HERE Map with Route</title>
+    <meta name="viewport" content="initial-scale=1.0, width=device-width" />
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
+    <style>
+        #map {
+            width: 100%;
+            height: 600px;
+            background: grey;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <div id="panel"></div>
+    <script>
+        var routeMap = {
+            platform: null,
+            routeLegs: null,
+            ui: null,
+            map: null,
+            toolTips: null,
+            routeInstructionsContainer: null,
+            displayRoute: function (waypoints, tips) {
+                routeMap.toolTips = tips;
+                while (routeMap.map.getObjects().length > 0) {
+                    routeMap.map.removeObject(routeMap.map.getObjects()[0]);
+                }
+
+                var router = routeMap.platform.getRoutingService(null, 8);
+                routeRequestParams = {
+                    routingMode: 'fast',
+                    transportMode: 'car',
+                    return: 'polyline,turnByTurnActions,actions,instructions,travelSummary'//,
+                    //avoid: ['boatFerry']
+                };
+
+                for (var i = 0; i < waypoints.length; i++) {
+                    routeRequestParams["origin"] = waypoints[0];
+                    routeRequestParams["destination"] = waypoints[waypoints.length - 1];
+                    routeRequestParams["via"] = waypoints.slice(1, waypoints.length - 1).map(function (wp) {
+                        return wp;
+                    });
+                }
+
+                router.calculateRoute(
+                    routeRequestParams,
+                    routeMap.onSuccess,
+                    routeMap.onError
+                );
+            },
+
+            onSuccess: function (result) {
+                var route = result.routes[0];
+                routeMap.routeLegs = route.sections;
+                routeMap.addRouteShapeToMap(route);
+
+                routeMap.addManueversToMap(route);
+
+                routeMap.addSummaryToPanel(route);
+            },
+
+            onError: function (error) {
+                alert('Ooops! ' + error.message);
+            },
+
+            initializeMap: function () {
+                var mapContainer = document.getElementById('map');
+                routeMap.routeInstructionsContainer = document.getElementById('panel');
+
+                routeMap.platform = new H.service.Platform({
+                    apikey: 'K7AOx9x9uokCctvsF_mCHgCN1DGFuib0vSzD91Qb6zE'
+                });
+                var defaultLayers = routeMap.platform.createDefaultLayers();
+
+                routeMap.map = new H.Map(mapContainer,
+                    defaultLayers.vector.normal.map, {
+                    center: {
+                        lat: 40.812183,
+                        lng: 29.489831
+                    },
+                    zoom: 8
+                });
+
+                var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(routeMap.map));
+                routeMap.ui = H.ui.UI.createDefault(routeMap.map, defaultLayers);
+            },
+
+            openBubble: function (position, text) {
+                routeMap.ui.getBubbles().forEach(bub => routeMap.ui.removeBubble(bub));
+                var bubble;
+                if (!bubble) {
+                    bubble = new H.ui.InfoBubble(
+                        position,
+                        {
+                            content: "<div style='width: 350px;font-size: small;'>" + text + "</div>"
+                        });
+                    routeMap.ui.addBubble(bubble);
+                }
+            },
+
+            addRouteShapeToMap: function (route) {
+                route.sections.forEach((section) => {
+                    // decode LineString from the flexible polyline
+                    var linestring = H.geo.LineString.fromFlexiblePolyline(section.polyline);
+
+                    // Create a polyline to display the route:
+                    var polyline = new H.map.Polyline(linestring, {
+                        style: {
+                            lineWidth: 4,
+                            strokeColor: 'rgba(0, 128, 255, 0.7)'
+                        }
+                    });
+
+                    // Add the polyline to the map
+                    routeMap.map.addObject(polyline);
+                    // And zoom to its bounding rectangle
+                    routeMap.map.getViewModel().setLookAtData({
+                        bounds: polyline.getBoundingBox()
+                    });
+                });
+
+            },
+
+            addManueversToMap: function (sections) {
+                var group = new H.map.Group();
+
+                sections.sections.forEach((section, index) => {
+
+                    var poly = H.geo.LineString.fromFlexiblePolyline(section.polyline).getLatLngAltArray();
+
+
+                    section.actions.forEach((action, i) => {
+                        var svgMarkup = '';
+                        if (index == 0 && i == 0) {
+                            svgMarkup = '<svg width="26" height="26" xmlns="http://www.w3.org/2000/svg">' +
+                                '<circle cx="13" cy="13" r="13" fill="#1b468d" stroke="white" stroke-width="1"  />' +
+                                '<text x="50%" y="50%" text-anchor="middle" stroke="#fff" stroke-width="2px" dy=".3em">' + "D" + '</text>' +
+                                '</svg>';
+                        } else {
+                            svgMarkup = '<svg width="26" height="26" xmlns="http://www.w3.org/2000/svg">' +
+                                '<circle cx="13" cy="13" r="13" fill="#1b468d" stroke="white" stroke-width="1"  />' +
+                                '<text x="50%" y="50%" text-anchor="middle" stroke="#fff" stroke-width="2px" dy=".3em">' + (index + 1) + '.' + (i + 1) + '</text>' +
+                                '</svg>';
+                        }
+
+                        var dotIcon = new H.map.Icon(svgMarkup, {
+                            anchor: { x: 13, y: 13 }
+                        });
+
+                        var marker = new H.map.Marker({
+                            lat: poly[action.offset * 3],
+                            lng: poly[action.offset * 3 + 1]
+                        },{ icon: dotIcon });
+
+                        marker.instruction = action.instruction;
+                        group.addObject(marker);
+                    });
+                });
+
+                group.addEventListener('tap', function (evt) 
+                {
+                   routeMap.map.setCenter(evt.target.getGeometry());
+                   routeMap.openBubble(evt.target.getGeometry(), evt.target.instruction);
+                }, false);
+
+                // Add the maneuvers group to the map
+                routeMap.map.addObject(group);
+            },
+
+            addSummaryToPanel: function (route) {
+                var duration = 0,
+                    distance = 0;
+
+                route.sections.forEach((section) => {
+                    distance += section.travelSummary.length;
+                    duration += section.travelSummary.duration;
+                });
+
+                var summaryDiv = document.createElement('div');
+                content = '';
+                content += '<b>Toplam Mesafe</b>: ' + distance / 1000 + 'km.';
+                content += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Süre</b>: ' + routeMap.toMMSS(duration) + ' (şimdiki trafik ile)';
+
+                summaryDiv.style.fontSize = 'large';
+                summaryDiv.innerHTML = content;
+
+                if (routeMap.routeInstructionsContainer.firstChild != null)
+                    routeMap.routeInstructionsContainer.removeChild(routeMap.routeInstructionsContainer.firstChild);
+                routeMap.routeInstructionsContainer.appendChild(summaryDiv);
+            },
+            toMMSS: function (duration) {
+                return Math.floor(duration / 60) + ' dakika';
+            }
+        }
+
+        routeMap.initializeMap();
+
+        //displayRoute: function (waypoints, tips)
+        var wayPoints = [];
+        var toolTips = [];
+
+        var data = [
+            {
+                name: "Beşiktaş",
+                lat: 41.0430,
+                lng: 29.0339
+            },
+            {
+                name: "Kocaeli",
+                lat: 40.8533,
+                lng: 29.8815
+            },
+            {
+                name: "Balıkesir",
+                lat: 39.6484,
+                lng: 27.8826
+            }
+        ];
+
+        for (var i = 0; i <= data.length - 1; i++) {
+
+            var toolTipDsc = "";
+            for (var j = 0; j <= data[i].name.length - 1; j++) {
+                if (j !== 0)
+                    toolTipDsc = toolTipDsc + "<br>";
+                toolTipDsc = toolTipDsc + data[i].name[j];
+            }
+
+            toolTips.push(toolTipDsc);
+            wayPoints.push(data[i].lat + "," + data[i].lng);
+
+        }
+
+        routeMap.displayRoute(wayPoints, toolTips);
+
+
+    </script>
+</body>
+
+</html>

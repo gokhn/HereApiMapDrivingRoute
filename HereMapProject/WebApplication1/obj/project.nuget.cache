@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "/6tfi1/+u3ws8u6HijbIl1V8kNxVUOL96YFbuZaJwO+g8MB2XE0RDlQK++QgEeD41NIOmedVnaPPKbQ/bpn24w==",
+  "success": true,
+  "projectFilePath": "E:\\GokhanGungor\\GGGithubProjects\\HereApiMapDrivingRoute\\HereApiMapDrivingRoute\\HereMapProject\\WebApplication1\\WebApplication1.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\GOKHANGUNGOR\\.nuget\\packages\\microsoft.visualstudio.azure.containers.tools.targets\\1.19.4\\microsoft.visualstudio.azure.containers.tools.targets.1.19.4.nupkg.sha512"
+  ],
+  "logs": []
+}
