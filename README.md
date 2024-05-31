@@ -51,6 +51,6 @@ var mapEvents = new H.mapevents.MapEvents(map);
 var behavior = new H.mapevents.Behavior(mapEvents);
 var ui = H.ui.UI.createDefault(map, defaultLayers);
 ```
-### Ornek Resim 
+### Ornek 
 
 ![Örnek Harita](https://github.com/gokhn/HereApiMapDrivingRoute/blob/main/HereMapProject/route.png)
